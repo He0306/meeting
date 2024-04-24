@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rookie.rookiemeeting.mapper.EmployeeMapper">
+
+
+    <insert id="register">
+        insert into employee (username, password, status, role, employeename, departmentid)
+        values (#{username}, #{password}, #{status}, #{role}, #{employeename}, #{departmentid})
+    </insert>
+
+
+    <update id="updateStatusAdopt">
+        update employee
+        set status = 1
+        where employeeid = #{employeeid}
+    </update>
+
+    <update id="updateStatusFail">
+        update employee
+        set status = 2
+        where employeeid = #{employeeid}
+    </update>
+
+    <update id="updatePass" parameterType="com.rookie.rookiemeeting.dto.UpdatePassDTO">
+        update employee
+        set password = #{newPassword}
+        where username = #{username}
+          and password = #{password}
+    </update>
+
+    <select id="queryUsername" resultType="com.rookie.rookiemeeting.entity.Employee">
+        select *
+        from employee
+        where username = #{username}
+    </select>
+
+    <select id="findEmployee" resultType="com.rookie.rookiemeeting.entity.Employee">
+        select e.*,d.*
+        from employee as e,department as d
+        where e.departmentid = d.departmentid
+        and e.is_delete = 0
+        <if test="employeename != null and employeename != ''">
+            and e.employeename like concat('%',#{employeename},'%')
+        </if>
+        <if test="phone != null and phone != ''">
+            and e.phone like concat('%',#{phone},'%')
+        </if>
+        <if test="email != null and email != ''">
+            and e.email like concat('%',#{email},'%')
+        </if>
+        <if test="departmentname != null and departmentname != ''">
+            and d.departmentname like concat('%',#{departmentname},'%')
+        </if>
+    </select>
+
+    <select id="getByStatus" resultType="com.rookie.rookiemeeting.entity.Employee">
+        select *
+        from employee
+        where status = 0
+    </select>
+
+    <!--根据ID查询参会人员-->
+    <select id="getAllEmpsById" resultType="com.rookie.rookiemeeting.dto.ParticipantsDto">
+        SELECT e.employeeid,
+               e.employeename,
+               e.email,
+               e.phone,
+               mp.status,
+               d.departmentname,
+               m.meetingid,
+               m.signinstarttime,
+               m.signinendtime,
+               mp.checkintime,
+               mp.location
+        FROM employee as e,
+             meetingparticipants as mp,
+             department as d,
+             meeting as m
+        where mp.meetingid = #{meetingid}
+          AND e.employeeid = mp.employeeid
+          AND e.departmentid = d.departmentid
+          AND m.meetingid = mp.meetingid
+    </select>
+
+    <select id="getAll" resultType="com.rookie.rookiemeeting.entity.Employee">
+        select *
+        from employee
+        where status = 1
+          and is_delete = 0
+    </select>
+
+    <select id="export" resultType="com.rookie.rookiemeeting.dto.EmployeeDto">
+        SELECT e.employeeid,
+               e.employeename,
+               e.username,
+               e.phone,
+               e.email,
+               d.departmentname,
+               e.role,
+               e.status
+        FROM employee as e,
+             department as d
+        WHERE e.departmentid = d.departmentid
+    </select>
+
+
+</mapper>

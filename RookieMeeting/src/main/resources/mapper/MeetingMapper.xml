@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rookie.rookiemeeting.mapper.MeetingMapper">
+
+
+    <!--添加会议-->
+    <insert id="addMeeting" useGeneratedKeys="true" keyProperty="meetingid">
+        insert into meeting (meetingname, roomid, reservationistid, numberofparticipants, signinstarttime,
+                             signinendtime, starttime, endtime,
+                             reservationtime, canceledtime, description, status)
+        values (#{meetingname}, #{roomid}, #{reservationistid}, #{numberofparticipants}, #{signinstarttime},
+                #{signinendtime}, #{starttime}, #{endtime},
+                #{reservationtime}, #{canceledtime}, #{description}, #{status});
+    </insert>
+
+    <update id="cancelmeeting">
+        update meeting
+        set canceledreason = #{canceledreason},
+            status         = 1,
+            canceledtime   = now()
+        where meetingid = #{meetingid}
+    </update>
+
+    <!--根据会议ID删除会议和参会人员-->
+    <delete id="delById">
+        delete meeting,meetingparticipants
+        from meeting
+                 left join meetingparticipants on meeting.meetingid = meetingparticipants.meetingid
+        where meeting.meetingid = #{meetingid}
+    </delete>
+
+    <!--分页查询全部-->
+    <select id="findMeeting" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        select e.employeeid, m.meetingid,m.meetingname,m.signinstarttime,m.signinendtime, m.starttime, m.endtime,
+        m.roomid, m.reservationistid,m.numberofparticipants,m.description,m.reservationtime,
+        e.employeename as reservationistname, mr.roomname as roomname
+        from meeting as m,employee as e,meetingroom as mr
+        where m.reservationistid = e.employeeid
+        and m.roomid = mr.roomid
+        and m.status = 0
+        <if test="mdto.meetingname!=null">
+            and meetingname like concat('%',#{mdto.meetingname},'%')
+        </if>
+        <if test="mdto.roomname!=null">
+            and mr.roomname like concat('%',#{mdto.roomname},'%')
+        </if>
+        <if test="mdto.reservationistname!=null">
+            and e.employeename like concat('%',#{mdto.reservationistname},'%')
+        </if>
+        <if test="mdto.starttime!=null ">
+            and starttime &gt;= #{mdto.starttime}
+        </if>
+        <if test="mdto.endtime!=null ">
+            and endtime &lt;= #{mdto.endtime}
+        </if>
+        <if test="mdto.reservationtime!=null">
+            and m.reservationtime &gt;= #{mdto.reservationtime}
+        </if>
+    </select>
+
+    <select id="getmeetingofmybookCanCancle" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        select
+        m.meetingid,m.meetingname,m.numberofparticipants,m.signinstarttime,m.signinendtime,m.starttime,m.endtime,m.reservationtime,m.roomid,m.reservationistid,m.description,
+        e.employeename as reservationistname,
+        mr.roomname as roomname
+        from meeting as m,
+        employee as e,
+        meetingroom as mr
+        where m.reservationistid = e.employeeid
+        and m.roomid = mr.roomid
+        and e.employeeid = #{employeeid}
+        and m.status = 0
+        <if test="meetingname !=null and meetingname !=''">
+            and m.meetingname like concat('%',#{meetingname},'%')
+        </if>
+    </select>
+
+    <select id="getCancelMeeting" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        select m.*,e.employeename as reservationistname,mr.roomname as roomname
+        from meeting as m,meetingroom as mr,employee as e
+        where m.reservationistid = e.employeeid
+        and m.roomid = mr.roomid
+        and e.employeeid = #{employeeid}
+        and m.status = 1
+        <if test="meetingname != null and meetingname != ''">
+            and m.meetingname like concat('%',#{meetingname},'%')
+        </if>
+    </select>
+
+    <select id="getMeetingById" resultType="com.rookie.rookiemeeting.entity.Meeting">
+        select meeting.*
+        from meeting,
+             meetingparticipants
+        where meetingparticipants.meetingid = meeting.meetingid
+          and meetingparticipants.employeeid = #{employeeid}
+          and status = 0
+    </select>
+
+    <!--根据已登录的员工ID查询自己的会议-->
+    <select id="getMyMeeting" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        SELECT m.meetingid,m.meetingname,m.starttime,m.endtime,mr.roomname,e.employeeid,e.employeename as
+        reservationistname,m.description,mp.status,m.signinstarttime,m.signinendtime
+        FROM meetingparticipants as mp, meeting as m,employee as e,meetingroom as mr
+        WHERE mp.meetingid = m.meetingid
+        and m.reservationistid = e.employeeid
+        and m.roomid = mr.roomid
+        and mp.employeeid = #{employeeid}
+        and m.status = 0
+        <if test="meetingname != null and meetingname != ''">
+            and m.meetingname like concat('%',#{meetingname},'%')
+        </if>
+    </select>
+
+    <select id="getSevenDayMeeting" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        SELECT m.meetingid,m.meetingname,mr.roomname,m.starttime,m.endtime
+        FROM meeting as m,meetingroom as mr
+        WHERE DATE_SUB(CURDATE(),INTERVAL 1 WEEK) &lt;= date(m.starttime)
+        and m.roomid = mr.roomid
+        and m.reservationistid = #{employeeid}
+        and m.status = 0
+        <if test="meetingname != null and meetingname != ''">
+            and m.meetingname like concat('%',#{meetingname},'%')
+        </if>
+    </select>
+
+    <!--根据ID查询会议详情-->
+    <select id="meetingById" resultType="com.rookie.rookiemeeting.dto.MeetingDto">
+        SELECT m.meetingname, m.numberofparticipants, m.reservationtime, m.description, mr.roomname, mr.roomnum
+        FROM meeting as m,
+             meetingroom as mr
+        where m.meetingid = #{meetingid}
+          AND m.roomid = mr.roomid
+    </select>
+
+    <select id="getCalendar" resultType="java.sql.Date">
+        SELECT DATE_FORMAT(m.starttime, '%Y-%m-%d')
+        FROM meetingparticipants as mp,
+             meeting as m,
+             employee as e,
+             meetingroom as mr
+        WHERE mp.meetingid = m.meetingid
+          and m.reservationistid = e.employeeid
+          and m.roomid = mr.roomid
+          and mp.employeeid = #{employeeid}
+          and m.status = 0
+    </select>
+
+</mapper>
